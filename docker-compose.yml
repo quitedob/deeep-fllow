@@ -1,0 +1,67 @@
+# 文件路径：docker-compose.yml
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: deerflow-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deerflow-backend
+    depends_on:
+      - redis
+    environment:
+      # 指向 Redis 服务
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+
+      # API 鉴权
+      - API_KEYS=your_api_key_here
+
+      # 告警阈值
+      - QUEUE_ALERT_THRESHOLD=1000
+      - FAILURE_RATE_THRESHOLD=0.1
+
+      # 本地告警
+      - ALERT_PROVIDER=local
+
+      # SMTP 邮件配置示例（以 QQ 邮箱为例，需替换为真实值）
+      - SMTP_SERVER=smtp.qq.com
+      - SMTP_PORT=587
+      - SMTP_USER=your_email@qq.com
+      - SMTP_PASSWORD=your_smtp_authcode
+      - ALERT_EMAIL_LIST=admin@example.com
+
+      # 钉钉告警（可选）
+      - DINGTALK_WEBHOOK=https://oapi.dingtalk.com/robot/send?access_token=xxxx
+      - DINGTALK_SECRET=your_dingtalk_secret
+
+      # FastAPI 配置
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+
+      # 定时任务间隔
+      - JOB_INTERVAL_SECONDS=60
+
+      # 是否启用 Prometheus 指标
+      - PROMETHEUS_METRICS_ENABLED=false
+
+      # 云端告警 Webhook（当 ALERT_PROVIDER=cloud 时使用）
+      - CLOUD_ALERT_WEBHOOK=https://oapi.dingtalk.com/robot/send?access_token=yyyy
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app  # 将宿主机当前目录挂载到容器 /app，便于热更新
+    restart: unless-stopped
+
+volumes:
+  redis_data:

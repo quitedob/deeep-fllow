@@ -10,7 +10,8 @@ import logging
 from email.mime.text import MIMEText
 from typing import List
 
-from src.config.settings import SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
+# 修复：从 settings 导入 ALERT_EMAIL_LIST
+from src.config.settings import SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, ALERT_EMAIL_LIST
 
 logger = logging.getLogger(__name__)
 
@@ -51,18 +52,24 @@ class LocalAlertAdapter:
             except Exception as e:
                 logger.error(f"[LocalAlertAdapter] 发送邮件告警失败 → 主题: {subject}, 异常: {e}", exc_info=True)
         else:
-            logger.warning(
-                f"[LocalAlertAdapter][告警] 邮件配置不完整或无收件人，主题: {subject}，内容: {content}"
-            )
+            # 修改日志信息，明确指出是配置不完整或收件人列表为空
+            if not to_addrs:
+                logger.warning(
+                    f"[LocalAlertAdapter][告警跳过] 邮件收件人列表 (ALERT_EMAIL_LIST) 为空。主题: {subject}"
+                )
+            else:
+                logger.warning(
+                    f"[LocalAlertAdapter][告警跳过] SMTP 邮件配置不完整。主题: {subject}"
+                )
+
 
     @staticmethod
     def notify(subject: str, content: str):
         """
         统一调用入口：将告警邮件发送给默认收件人列表。
-        注意：此处示例代码将收件人硬编码为 ["admin@example.com"]；
-        若项目需要，可将 ALRERT_EMAIL_LIST 从 settings 传入，更灵活。
+        修复：不再硬编码收件人，而是从 settings 中读取 ALERT_EMAIL_LIST。
         """
-        # TODO: 若未来不想硬编码，可将 ALERT_EMAIL_LIST 从 settings 中读取
-        to_addrs = ["admin@example.com"]  # 示例收件人，需根据实际情况修改
-        logger.info(f"[LocalAlertAdapter] 准备发送邮件告警 → 主题: {subject}, 默认收件人: {to_addrs}")
+        # 从 settings 中读取收件人列表
+        to_addrs = ALERT_EMAIL_LIST
+        logger.info(f"[LocalAlertAdapter] 准备发送邮件告警 → 主题: {subject}, 目标收件人: {to_addrs}")
         LocalAlertAdapter.send_email(subject, content, to_addrs)
