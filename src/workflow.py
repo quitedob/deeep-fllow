@@ -4,18 +4,10 @@
 import asyncio
 import logging
 from src.graph import build_graph
+from src.utils.logging import init_logger
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,  # Default level is INFO
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-
-
-def enable_debug_logging():
-    """Enable debug level logging for more detailed execution information."""
-    logging.getLogger("src").setLevel(logging.DEBUG)
-
+# Initialize logger
+init_logger()
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +38,9 @@ async def run_agent_workflow_async(
         raise ValueError("Input could not be empty")
 
     if debug:
-        enable_debug_logging()
+        init_logger("DEBUG")
+    else:
+        init_logger("INFO") # Or your default level
 
     logger.info(f"Starting async workflow with user input: {user_input}")
     initial_state = {

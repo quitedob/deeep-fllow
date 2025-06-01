@@ -4,6 +4,7 @@
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
+from src.utils.logging import init_logger
 from .types import State
 from .nodes import (
     coordinator_node,
@@ -15,6 +16,9 @@ from .nodes import (
     human_feedback_node,
     background_investigation_node,
 )
+
+# Initialize logger
+init_logger()
 
 
 def _build_base_graph():

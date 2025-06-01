@@ -42,7 +42,8 @@ REASONING_MODEL = os.getenv("REASONING_MODEL", "deepseek-coder")
 
 # --- 搜索配置 ---
 # 从 YAML 配置中读取默认搜索引擎
-_config_from_yaml = load_yaml_config()
+_conf_yaml_path = os.path.join(os.path.dirname(__file__), '..', '..', 'conf.yaml')
+_config_from_yaml = load_yaml_config(_conf_yaml_path)
 # 修复：确保即使 yaml 文件中没有 search_engine 也能正常工作
 _default_search_engine_from_yaml = _config_from_yaml.get('search_engine', "TAVILY")
 # 优先使用环境变量，否则使用YAML配置，最后使用硬编码默认值

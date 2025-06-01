@@ -37,6 +37,10 @@ from src.server.rag_request import (
     RAGResourcesResponse,
 )
 from src.tools import VolcengineTTS
+from src.utils.logging import init_logger
+
+# Initialize logger
+init_logger()
 
 logger = logging.getLogger(__name__)
 
