@@ -1,93 +1,51 @@
-# 文件路径: src/agents/planner.py
+# src/agents/planner.py
 # -*- coding: utf-8 -*-
 """
-Planner Agent：将用户输入的主题拆解为若干子任务，并生成初始计划 State。
+Planner Agent: 接收 state.topic，生成 state.tasks 列表。
 """
-from typing import Dict, Any, List
-import logging
 
-logger = logging.getLogger(__name__)
+import redis
+import time
+import json
+from typing import Dict, Any # Ensure Dict, Any are imported
 
-# 修复：修改函数签名以接收完整的初始状态
-def run_planner(state: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    输入 (一个字典，代表完整的初始状态):
-      - state: {
-          "topic": "...",
-          "output_dir": "...",
-          "output_options": [...]
-        }
-    输出 (一个字典，将作为 langgraph 中名为 'plan' 的状态字段):
-      - plan: 包含拆分后的子任务列表及全局配置，例如：
-        {
-          "topic": "...",
-          "tasks": [ ... ],
-          "output_dir": "...",
-          "output_options": [...]
-        }
-    """
-    # 修复：从 state 字典中提取所需信息
-    topic = state.get("topic", "")
-    output_dir = state.get("output_dir", "outputs")
-    output_options = state.get("output_options", ["md", "txt", "pdf", "ppt", "audio"])
+from src.config.settings import REDIS_HOST, REDIS_PORT, REDIS_DB
+
+_pubsub = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+
+def planner_agent(state: Dict[str, Any]) -> Dict[str, Any]: # Ensure function name is planner_agent
+    session_id = state.get("_session_id", "")
+    # Only define channel and publish if session_id is present
+    channel = f"channel:session:{session_id}" if session_id else None
+
+    # 发布“START”
+    if channel:
+        _pubsub.publish(channel, json.dumps({
+            "session_id": session_id,
+            "node": "planner",
+            "status": "START",
+            "timestamp": int(time.time() * 1000)
+        }))
+
+    # … 原有规划逻辑 …
+    topic = state.get("topic")
+    tasks = [] # Initialize tasks as an empty list
 
     if not topic:
-        logger.error("Planner Agent 错误：输入的 state 中没有 'topic'。")
-        # 返回一个包含错误信息的状态，或直接引发异常
-        return {**state, "tasks": [], "error": "Missing topic"}
+        # Handle missing topic, tasks remain empty
+        # logger.warning(f"Planner agent called for session {session_id} without a topic.")
+        pass
+    else:
+        tasks = [f"Research about {topic}", f"Code for {topic}", f"Report on {topic}"]
 
-    logger.info(f"Planner Agent 开始运行，主题: '{topic}'")
 
-    # 简单模板拆分
-    tasks_data: List[Dict[str, Any]] = [
-        {
-            "name": "定义与背景",
-            "prompt": f"请简要介绍『{topic}』的背景与定义。",
-            "results": [],
-            "code": "",
-            "code_result": {}
-        },
-        {
-            "name": "相关工作",
-            "prompt": f"请列出与『{topic}』相关的主要文献和进展，附上简单评价。",
-            "results": [],
-            "code": "",
-            "code_result": {}
-        },
-        {
-            "name": "技术细节",
-            "prompt": f"请详细描述实现『{topic}』所需的关键技术和算法步骤，并给出示例代码。",
-            "results": [],
+    # 发布“COMPLETE”
+    if channel:
+        _pubsub.publish(channel, json.dumps({
+            "session_id": session_id,
+            "node": "planner",
+            "status": "COMPLETE",
+            "timestamp": int(time.time() * 1000)
+        }))
 
-            "code": "",
-            "code_result": {}
-        },
-        {
-            "name": "实验与结果",
-            "prompt": f"设计一个实验方案来验证『{topic}』的有效性，包含数据、方法与指标。",
-            "results": [],
-            "code": "",
-            "code_result": {}
-        },
-        {
-            "name": "总结与展望",
-            "prompt": f"请对『{topic}』的未来发展进行预测和展望。",
-            "results": [],
-            "code": "",
-            "code_result": {}
-        }
-    ]
-
-    # 构造输出，这个字典将成为图状态中的 'plan' 对象
-    # 修复：将 output_dir 和 output_options 一并放入返回的 plan 中，以便后续节点使用
-    plan_output_for_langgraph = {
-        "topic": topic,
-        "tasks": tasks_data,
-        "output_dir": output_dir,
-        "output_options": output_options,
-        "report_paths": state.get("report_paths", {}), # 保持传递
-        "audio_path": state.get("audio_path", "")      # 保持传递
-    }
-
-    logger.info(f"Planner Agent 完成计划制定，共 {len(tasks_data)} 个任务。")
-    return plan_output_for_langgraph
+    return {"tasks": tasks}
