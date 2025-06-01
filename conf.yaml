@@ -1,0 +1,49 @@
+# -*- coding: utf-8 -*-
+# --- 全局 LLM 模型配置 ---
+# 基础模型：用于常规对话、内容生成等
+BASIC_MODEL:
+  model_name: "deepseek-chat"
+  temperature: 0.7
+
+# 推理模型：用于逻辑推理、代码生成、计划制定等需要高准确性的任务
+REASONING_MODEL:
+  model_name: "deepseek-coder" # 修复：使用更适合推理和代码的模型
+  temperature: 0.0
+
+# 视觉模型：用于多模态图片理解
+VISION_MODEL:
+  model_name: "deepseek-vision"
+  temperature: 0.0
+
+# --- 搜索与记忆配置 ---
+# 默认搜索引擎 (TAVILY, DUCKDUCKGO, ARXIV)
+# 注意：此字段在融合检索模式下将被 fused_search_engines 覆盖
+SEARCH_ENGINE: "TAVILY"
+
+# 是否启用 Mem0 长期记忆
+ENABLE_MEM0: true
+# Mem0 索引的存储路径
+MEM0_INDEX_PATH: "./data/mem0_index"
+
+# --- RAG 与向量知识库配置 ---
+# RAG (向量) 知识库的索引路径
+RAG_INDEX_PATH: "./data/rag_documents"
+# 修复：新增向量知识库路径，与configuration.py对应
+VECTOR_STORE_PATH: "./data/vector_store"
+
+
+# --- 融合检索配置 ---
+# 是否启用融合检索 (同时调用多个引擎)
+ENABLE_FUSED_SEARCH: true
+# 搜索结果的缓存时间 (秒)，0 表示不缓存
+SEARCH_CACHE_TTL: 3600
+# 融合检索使用的引擎列表 (TAVILY, ARXIV, RAG, DUCKDUCKGO)
+FUSED_SEARCH_ENGINES: ["TAVILY", "ARXIV", "RAG"]
+
+# --- 输出配置 ---
+# 指定报告输出目录
+OUTPUT_DIR: "./output_reports"
+
+# --- 执行配置 ---
+# 默认最大搜索结果数
+MAX_SEARCH_RESULTS: 10
