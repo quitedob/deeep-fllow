@@ -1,0 +1,49 @@
+{
+  // LangGraph 的整体流程定义，五个节点按顺序执行
+  "nodes": {
+    "planner": {
+      "type": "python",
+      "module": "src.agents.planner",
+      "func": "run_planner",
+      "inputs": ["topic"],
+      "outputs": ["plan"]
+    },
+    "researcher": {
+      "type": "python",
+      "module": "src.agents.research_agent",
+      "func": "run_researcher",
+      "inputs": ["plan"],
+      "outputs": ["plan_with_results"]
+    },
+    "coder": {
+      "type": "python",
+      "module": "src.agents.coder_agent",
+      "func": "run_coder",
+      "inputs": ["plan_with_results"],
+      "outputs": ["plan_with_code"]
+    },
+    "reporter": {
+      "type": "python",
+      "module": "src.agents.reporter_agent",
+      "func": "run_reporter",
+      "inputs": ["plan_with_code"],
+      "outputs": ["plan_with_report"]
+    },
+    "voice": {
+      "type": "python",
+      "module": "src.agents.voice_agent",
+      "func": "run_voice",
+      "inputs": ["plan_with_report"],
+      "outputs": ["final_plan"]
+    }
+  },
+  "edges": [
+    { "from": "planner", "to": "researcher" },
+    { "from": "researcher", "to": "coder" },
+    { "from": "coder", "to": "reporter" },
+    { "from": "reporter", "to": "voice" }
+  ],
+  "metadata": {
+    "description": "多代理深度研究流程：Planner → Researcher → Coder → Reporter → Voice"
+  }
+}

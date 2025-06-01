@@ -1,34 +1,26 @@
-# Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
-# SPDX-License-Identifier: MIT
+# 文件路径: src/graph/types.py
+# -*- coding: utf-8 -*-
+"""
+扩展 State 类，包含输出选项与多格式文件路径等字段，为后续报告生成与音频合成提供存储。
+"""
+from typing import Any, Dict, List # Ensure these are imported
+from dataclasses import dataclass, field
 
-from typing import List, Optional # Ensure List and Optional are imported
-from langgraph.graph import MessagesState
+@dataclass
+class Task:
+    name: str
+    prompt: str
+    results: List[Dict[str, Any]] = field(default_factory=list)
+    code: str = ""
+    code_result: Dict[str, Any] = field(default_factory=dict)
 
-from src.prompts.planner_model import Plan
-from src.rag import Resource
-
-
-class State(MessagesState):
-    """State for the agent system, extends MessagesState with next field."""
-
-    # Runtime Variables
-    locale: str = "en-US"
-    observations: list[str] = []
-    resources: list[Resource] = []
-    plan_iterations: int = 0
-    current_plan: Plan | str = None
-    final_report: str = ""
-    auto_accepted_plan: bool = False
-    enable_background_investigation: bool = True
-    background_investigation_results: str = None
-
-    # --- [新增] 输出控制与结果路径 ---
-    output_options: Optional[List[str]] = [] # 例如: ["pdf", "ppt", "tts"]
-    output_dir: str = "./output_reports" # 默认输出目录
-
-    # [新增] 用于存储生成文件路径的字段
-    txt_path: Optional[str] = None
-    md_path: Optional[str] = None
-    pdf_path: Optional[str] = None
-    ppt_path: Optional[str] = None
-    tts_path: Optional[str] = None
+@dataclass
+class State:
+    topic: str
+    tasks: List[Task] = field(default_factory=list)
+    # 新增输出相关字段
+    output_options: Dict[str, Any] = field(default_factory=lambda: {"txt": True, "pdf": True, "ppt": True, "audio": True})
+    output_dir: str = "outputs" # 确保这个目录与 agent/reporter.py 和 agent/voice_agent.py 中使用的目录一致
+    report_paths: Dict[str, str] = field(default_factory=dict)
+    audio_path: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
