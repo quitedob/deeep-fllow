@@ -1,0 +1,48 @@
+{
+  "nodes": {
+    "planner": {
+      "type": "python",
+      "module": "src.agents.planner",
+      "func": "run_planner",
+      "inputs": ["initial_state"],
+      "outputs": ["plan"]
+    },
+    "researcher": {
+      "type": "python",
+      "module": "src.agents.research_agent",
+      "func": "run_researcher",
+      "inputs": ["plan"],
+      "outputs": ["plan"]
+    },
+    "coder": {
+      "type": "python",
+      "module": "src.agents.coder_agent",
+      "func": "run_coder",
+      "inputs": ["plan"],
+      "outputs": ["plan"]
+    },
+    "reporter": {
+      "type": "python",
+      "module": "src.agents.reporter_agent",
+      "func": "run_reporter",
+      "inputs": ["plan"],
+      "outputs": ["plan"]
+    },
+    "voice": {
+      "type": "python",
+      "module": "src.agents.voice_agent",
+      "func": "run_voice",
+      "inputs": ["plan"],
+      "outputs": ["final_plan"]
+    }
+  },
+  "edges": [
+    { "from": "planner", "to": "researcher" },
+    { "from": "researcher", "to": "coder" },
+    { "from": "coder", "to": "reporter" },
+    { "from": "reporter", "to": "voice" }
+  ],
+  "metadata": {
+    "description": "多代理深度研究流程：Planner → Researcher → Coder → Reporter → Voice"
+  }
+}
