@@ -20,17 +20,22 @@ VISION_MODEL:
 # --- 搜索与记忆配置 ---
 # 默认搜索引擎 (TAVILY, DUCKDUCKGO, ARXIV)
 # 注意：此字段在融合检索模式下将被 fused_search_engines 覆盖
-SEARCH_ENGINE: "TAVILY"
+SEARCH_ENGINE: "TAVILY" # 示例：可被环境变量 $SEARCH_ENGINE_OVERRIDE 覆盖
 
 # 是否启用 Mem0 长期记忆
 ENABLE_MEM0: true
 # Mem0 索引的存储路径
+# 优化点：建议通过环境变量配置路径，例如在 .env 文件中设置 MEM0_INDEX_PATH_ENV=/abs/path/to/mem0_index
+# 然后在此处使用：MEM0_INDEX_PATH: "$MEM0_INDEX_PATH_ENV"
 MEM0_INDEX_PATH: "./data/mem0_index"
+
 
 # --- RAG 与向量知识库配置 ---
 # RAG (向量) 知识库的索引路径
+# 优化点：建议通过环境变量配置，如 RAG_INDEX_PATH: "$RAG_INDEX_PATH_ENV"
 RAG_INDEX_PATH: "./data/rag_documents"
-# 修复：新增向量知识库路径，与configuration.py对应
+# 新增向量知识库路径，与configuration.py对应
+# 优化点：建议通过环境变量配置，如 VECTOR_STORE_PATH: "$VECTOR_STORE_PATH_ENV"
 VECTOR_STORE_PATH: "./data/vector_store"
 
 
@@ -44,10 +49,11 @@ FUSED_SEARCH_ENGINES: ["TAVILY", "ARXIV", "RAG"]
 
 # --- 输出配置 ---
 # 指定报告输出目录
+# 优化点：建议通过环境变量配置，如 OUTPUT_DIR: "$OUTPUT_DIR_ENV"
 OUTPUT_DIR: "./output_reports"
 # 新增：默认输出格式选项
 OUTPUT_OPTIONS: ["md", "txt", "pdf", "ppt", "audio"]
 
 # --- 执行配置 ---
 # 默认最大搜索结果数
-MAX_SEARCH_RESULTS: 10
+MAX_SEARCH_RESULTS: 10 # 示例：可被环境变量 $MAX_SEARCH_RESULTS_OVERRIDE 覆盖

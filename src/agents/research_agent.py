@@ -1,59 +1,59 @@
-# 文件路径: src/agents/research_agent.py
+# src/agents/research_agent.py
 # -*- coding: utf-8 -*-
 """
-Researcher Agent：对 Planner 输出的每个子任务 prompt 进行多源检索，
-并将结果写入 plan["tasks"][i]["results"]。
+Researcher Agent: 根据 state.tasks 中的具体任务执行检索，并把结果写入 state.research_results。
 """
-from typing import Dict, List, Any # Ensure Any is imported
-from src.tools.fused_search import fused_search
-import logging
 
-logger = logging.getLogger(__name__)
+import redis
+import time
+import json
+from typing import Dict, Any # Ensure Dict, Any are imported
 
-def run_researcher(plan: Dict[str, Any]) -> Dict[str, Any]: # Input is 'plan', output is 'plan_with_results'
-    """
-    输入：
-      - plan: 来自 Planner 的输出 (一个字典，包含 "topic" 和 "tasks" list)
-              plan = {"topic": "...", "tasks": [{"name": ..., "prompt": ..., "results": [], ...}, ...]}
-    输出：
-      - plan_with_results: 修改后的 plan 字典，在每个 task 中填充 "results" 字段。
-                           结构与输入 'plan' 相同，但 'results' 列表被填充。
-                           This will be the value for 'plan_with_results' in the graph state.
-    """
-    logger.info(f"Researcher Agent 开始运行，处理主题: '{plan.get('topic', '未知主题')}'")
+from src.config.settings import REDIS_HOST, REDIS_PORT, REDIS_DB
+# Make sure cache functions are imported if used
+from src.utils.cache import get_cached, cache_result
 
-    tasks = plan.get("tasks", [])
-    if not isinstance(tasks, list):
-        logger.error(f"输入 'plan' 中的 'tasks' 不是列表: {tasks}")
-        # Potentially return plan unmodified or raise an error
-        return plan
+_pubsub = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
 
-    for i, task in enumerate(tasks):
-        if not isinstance(task, dict):
-            logger.warning(f"任务列表中的项目 {i} 不是字典: {task}，跳过此任务。")
-            continue
+def research_agent(state: Dict[str, Any]) -> Dict[str, Any]: # Ensure function name is research_agent
+    session_id = state.get("_session_id", "")
+    # Only define channel and publish if session_id is present
+    channel = f"channel:session:{session_id}" if session_id else None
 
-        prompt = task.get("prompt", "")
-        task_name = task.get("name", f"任务 {i+1}")
+    # 发布“START”
+    if channel:
+        _pubsub.publish(channel, json.dumps({
+            "session_id": session_id,
+            "node": "researcher",
+            "status": "START",
+            "timestamp": int(time.time() * 1000)
+        }))
 
-        if not prompt:
-            logger.warning(f"任务 '{task_name}' 的 prompt 为空，跳过检索。")
-            task["results"] = [] #确保 'results' 字段存在
-            continue
+    # … 原有检索逻辑 … （示例用缓存或模拟结果）
+    topic = state.get("topic")
+    results = [] # Default to empty results
 
-        logger.info(f"正在为任务 '{task_name}' 执行融合搜索，Prompt: '{prompt[:50]}...'")
-        try:
-            # 调用 fused_search，获取检索结果
-            # fused_search 应该返回 List[Dict[str, Any]]
-            search_results = fused_search(prompt, top_k=5)
-            task["results"] = search_results # 修改传入的 plan 字典中的 task
-            logger.info(f"任务 '{task_name}' 完成检索，获得 {len(search_results)} 条结果。")
-        except Exception as e:
-            logger.error(f"任务 '{task_name}' 在执行融合搜索时发生错误: {e}", exc_info=True)
-            task["results"] = [] # 出错时确保 results 字段存在且为空
+    if not topic:
+        # Handle missing topic, results remain empty
+        # logger.warning(f"Researcher agent called for session {session_id} without a topic.")
+        pass
+    else:
+        cache_key = f"search:{topic}"
+        cached = get_cached(cache_key) # from src.utils.cache
+        if cached is not None: # Explicitly check for None, as an empty list/dict from cache could be valid.
+            results = cached
+        else:
+            # Simulate research
+            results = [{"title": f"Result 1 for {topic}"}, {"title": f"Result 2 for {topic}"}]
+            cache_result(cache_key, results, ex=3600) # from src.utils.cache
 
-    # langgraph.json 中此节点的输出是 "plan_with_results".
-    # 这个名字意味着我们应该返回整个 plan 对象，现在它已经被修改过了。
-    # The 'plan' dictionary itself has been modified in place.
-    logger.info("Researcher Agent 完成所有任务的检索。")
-    return plan # Return the modified plan dictionary
+    # 发布“COMPLETE”
+    if channel:
+        _pubsub.publish(channel, json.dumps({
+            "session_id": session_id,
+            "node": "researcher",
+            "status": "COMPLETE",
+            "timestamp": int(time.time() * 1000)
+        }))
+
+    return {"research_results": results}

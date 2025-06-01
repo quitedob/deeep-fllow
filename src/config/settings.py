@@ -1,69 +1,90 @@
-# 文件路径: src/config/settings.py
+# 文件路径：src/config/settings.py
 # -*- coding: utf-8 -*-
 """
-从环境变量加载配置。
-这个文件用于存放敏感信息（如API Key）或经常变化的配置，与 `configuration.py` 中的静态配置分离。
+项目全局配置文件：从环境变量或 .env 中读取各类配置，
+包括 Redis 连接、告警阈值、SMTP、钉钉机器人、FastAPI 服务等。
+所有模块通过 import settings 来获取对应配置。
 """
 
 import os
 from dotenv import load_dotenv
 from enum import Enum
-from .loader import load_yaml_config
 
-# 加载项目根目录下的 .env 文件中的环境变量
-# 修复：确保能正确找到.env文件
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-dotenv_path = os.path.join(project_root, '.env')
-load_dotenv(dotenv_path=dotenv_path)
+# 仅在开发或测试阶段加载 .env；生产环境可由 Kubernetes ConfigMap、Docker Env 或 CI/CD 填充
+load_dotenv()
 
-# --- 新增：搜索引擎枚举 ---
-class SearchEngine(Enum):
-    """定义支持的搜索引擎"""
-    TAVILY = "TAVILY"
-    DUCKDUCKGO = "DUCKDUCKGO"
-    ARXIV = "ARXIV"
-    RAG = "RAG"
+# -------------------- Redis 配置 --------------------
+# Redis 服务主机地址，默认 127.0.0.1；国内服务器可根据实际部署修改
+REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
+# Redis 服务端口号，默认 6379
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+# Redis 数据库索引，默认 0
+REDIS_DB = int(os.getenv("REDIS_DB", 0))
 
-# --- 模型与API配置 ---
+# -------------------- API 鉴权配置 --------------------
+# 项目的 API Key 列表，以逗号分隔，必须通过环境变量设置；若为空，则抛出异常
+API_KEYS_STR = os.getenv("API_KEYS", "")
+API_KEYS = [key.strip() for key in API_KEYS_STR.split(',') if key.strip()]
+if not API_KEYS:
+    raise ValueError("请在环境变量中设置 API_KEYS（以逗号分隔多个 Key）")
 
-# API Key
-# 简化注释：从环境变量读取 DeepSeek API Key
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+# -------------------- 阈值配置 --------------------
+# Redis 队列长度告警阈值（长度），默认 1000
+QUEUE_ALERT_THRESHOLD = int(os.getenv("QUEUE_ALERT_THRESHOLD", 1000))
+# 节点故障率告警阈值，0.1 即 10%
+FAILURE_RATE_THRESHOLD = float(os.getenv("FAILURE_RATE_THRESHOLD", 0.1))
 
-# API Base URL
-# 简化注释：允许自定义 DeepSeek API 的接入点
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+# -------------------- 告警渠道选择 --------------------
+# 当 ALERT_PROVIDER='local' 时使用本地邮件+钉钉；当为 'cloud' 时调用云端告警适配器
+ALERT_PROVIDER = os.getenv("ALERT_PROVIDER", "local")  # 可选值：local / cloud
+# 优化点：新增告警状态配置
+# 告警状态（如 "ALERTING"）在 Redis 中的有效期（秒），防止因 worker 停止而永久卡在告警状态
+ALERT_STATE_EXPIRY_SECONDS = int(os.getenv("ALERT_STATE_EXPIRY_SECONDS", 86400)) # 默认 24 小时
 
-# 默认使用的模型名称 (此处的设置可以被 conf.yaml 覆盖)
-# 简化注释：默认对话模型
-DEFAULT_CHAT_MODEL = os.getenv("DEFAULT_CHAT_MODEL", "deepseek-chat")
-# 简化注释：默认推理模型
-REASONING_MODEL = os.getenv("REASONING_MODEL", "deepseek-coder")
+# -------------------- SMTP 邮件告警配置 --------------------
+# SMTP 服务地址（如 qq 邮箱：smtp.qq.com）
+SMTP_SERVER = os.getenv("SMTP_SERVER", "")
+# SMTP 端口号，587(STARTTLS)/465(SSL)
+SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+# 发件邮箱账号，如 qq 邮箱地址
+SMTP_USER = os.getenv("SMTP_USER", "")
+# 发件邮箱授权码（非登录密码）
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+# 收件人列表，以逗号分隔，格式示例 "alice@example.com,bob@example.com"
+ALERT_EMAIL_LIST_STR = os.getenv("ALERT_EMAIL_LIST", "")
+ALERT_EMAIL_LIST = [email.strip() for email in ALERT_EMAIL_LIST_STR.split(',') if email.strip()]
 
+# -------------------- 钉钉机器人告警配置 --------------------
+# 钉钉自定义机器人 Webhook 地址
+DINGTALK_WEBHOOK = os.getenv("DINGTALK_WEBHOOK", "")
+# 钉钉机器人加签密钥（若已在钉钉后台开启“加签”安全设置，则必填）
+DINGTALK_SECRET = os.getenv("DINGTALK_SECRET", "")
 
-# --- 搜索配置 ---
-# 从 YAML 配置中读取默认搜索引擎
-_conf_yaml_path = os.path.join(project_root, 'conf.yaml')
-_config_from_yaml = load_yaml_config(_conf_yaml_path)
-# 修复：确保即使 yaml 文件中没有 search_engine 也能正常工作，并使用正确的键名
-_default_search_engine_from_yaml = _config_from_yaml.get('SEARCH_ENGINE', "TAVILY")
-# 优先使用环境变量，否则使用YAML配置，最后使用硬编码默认值
-DEFAULT_SEARCH_ENGINE = os.getenv("SEARCH_ENGINE", _default_search_engine_from_yaml).upper()
-# 定义一个常量，以供 background_investigation_node 使用
-SELECTED_SEARCH_ENGINE = DEFAULT_SEARCH_ENGINE
+# -------------------- FastAPI 配置 --------------------
+# FastAPI 服务监听主机，默认 0.0.0.0 可对外暴露
+API_HOST = os.getenv("API_HOST", "0.0.0.0")
+# FastAPI 服务监听端口，默认 8000
+API_PORT = int(os.getenv("API_PORT", 8000))
 
+# -------------------- APScheduler 定时任务配置 --------------------
+# 定时任务（队列监控、节点故障率监控）循环间隔（秒），默认 60s
+JOB_INTERVAL_SECONDS = int(os.getenv("JOB_INTERVAL_SECONDS", 60))
 
-# --- 请求参数 ---
+# -------------------- Prometheus 指标埋点（可选） --------------------
+# 若设置为 true，则启用指标埋点并暴露 /metrics 接口
+PROMETHEUS_METRICS_ENABLED = os.getenv("PROMETHEUS_METRICS_ENABLED", "false").lower() == "true"
 
-# 请求超时时长（秒）
-# 简化注释：API 请求超时时间
-# 修复：确保从环境变量加载的是浮点数，并将默认值修改为 300.0
-try:
-    REQUEST_TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "300.0"))
-except (ValueError, TypeError):
-    REQUEST_TIMEOUT = 300.0
+# -------------------- 所有节点名称，用于 Prometheus 监控（可选） --------------------
+# 在最初阶段，可不使用；如果在指标中需要标签，可在 .env 中设置 ALL_NODES="planner,researcher,coder,reporter,voice"
+ALL_NODES_STR = os.getenv("ALL_NODES", "planner,researcher,coder,reporter,voice")
+ALL_NODES = [node.strip() for node in ALL_NODES_STR.split(',') if node.strip()]
 
+# -------------------- TTS 引擎配置 --------------------
+# 可选 TTS 引擎，用于 Voice Agent 语音合成
+class TTSEngine(Enum):
+    GTTS = "GTTS"       # 使用 gTTS 库
+    AZURE = "AZURE"     # 使用 Azure TTS（可扩展）
+    GOOGLE = "GOOGLE"   # 使用 Google TTS（可扩展）
 
-# 是否默认使用流式输出
-# 简化注释：是否启用流式输出
-USE_STREAM = os.getenv("USE_STREAM", "False").lower() in ('true', '1', 't')
+# 从环境变量读取默认 TTS 引擎，若为空则使用 GTTS
+DEFAULT_TTS_ENGINE = TTSEngine(os.getenv("TTS_ENGINE", "GTTS"))

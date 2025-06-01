@@ -128,6 +128,7 @@ def main():
             import uvicorn # 动态导入uvicorn
             logger.info(f"服务器模式：启动 FastAPI 服务于 http://{args.host}:{args.port}") # 日志：启动服务
             # 注意：确保 uvicorn.run 的第一个参数是 "module_path:app_instance_name"
+            # 此处指向 src.server.app 模块中的 app 实例
             uvicorn.run("src.server.app:app", host=args.host, port=args.port, reload=True) # 运行uvicorn
         except ImportError:
             logger.error("启动服务器失败：uvicorn 未安装。请运行 `pip install uvicorn[standard]`。") # uvicorn未安装错误
