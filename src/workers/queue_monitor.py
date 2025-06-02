@@ -10,7 +10,7 @@ import logging
 from queue import Queue # Standard library queue for local simulation
 from typing import Any # For type hint
 
-from src.config.settings import QUEUE_LENGTH_THRESHOLD, ALERT_PROVIDER, JOB_INTERVAL_SECONDS
+from src.config.settings import QUEUE_ALERT_THRESHOLD, ALERT_PROVIDER, JOB_INTERVAL_SECONDS
 from src.adapters.local_alert_adapter import LocalAlertAdapter
 from src.adapters.cloud_alert_adapter import CloudAlertAdapter
 
@@ -48,18 +48,18 @@ def send_alert(subject: str, content: str): # Defined here as per user snippet
 async def monitor_queue_length(interval: int = JOB_INTERVAL_SECONDS):
     """
     异步定时任务：每隔 interval 秒检查队列长度
-    如超过 QUEUE_LENGTH_THRESHOLD，触发告警
+    如超过 QUEUE_ALERT_THRESHOLD，触发告警
     """
-    logger.info(f"Local Queue monitor started. Interval: {interval}s, Threshold: {QUEUE_LENGTH_THRESHOLD}.") # Corrected logger name
+    logger.info(f"Local Queue monitor started. Interval: {interval}s, Threshold: {QUEUE_ALERT_THRESHOLD}.")
     while True:
         try: # Added try-except around the loop content for robustness
             current_length = task_queue.qsize()
             timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            logger.debug(f"Local Queue length check at {timestamp}: {current_length} (Threshold: {QUEUE_LENGTH_THRESHOLD})")
+            logger.debug(f"Local Queue length check at {timestamp}: {current_length} (Threshold: {QUEUE_ALERT_THRESHOLD})")
 
-            if current_length > QUEUE_LENGTH_THRESHOLD: # User used > not >=
-                subject = "【告警】队列长度过高" # Changed subject to be more generic for queue
-                content = f"时间：{timestamp}，当前队列长度：{current_length}，超过阈值：{QUEUE_LENGTH_THRESHOLD}"
+            if current_length > QUEUE_ALERT_THRESHOLD:
+                subject = "【告警】队列长度过高"
+                content = f"时间：{timestamp}，当前队列长度：{current_length}，超过阈值：{QUEUE_ALERT_THRESHOLD}"
                 logger.warning(f"Alert triggered for queue length: {subject} - {content}")
                 send_alert(subject, content) # Calls the local send_alert
 

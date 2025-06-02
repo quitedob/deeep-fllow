@@ -97,7 +97,8 @@ async def test_monitor_queue_length_loop_alerts_local_queue(mock_send_alert, loc
 
 def test_send_alert_uses_local_adapter(mock_adapter_notify_methods, monkeypatch):
     mock_local_notify, mock_cloud_notify = mock_adapter_notify_methods
-    monkeypatch.setattr(settings, 'ALERT_PROVIDER', 'local')
+    # Patch ALERT_PROVIDER directly in the local_queue_monitor_mod module's namespace
+    monkeypatch.setattr(local_queue_monitor_mod, 'ALERT_PROVIDER', 'local')
 
     local_queue_monitor_mod.send_alert("Test Subject Local", "Test Content Local")
 
@@ -106,7 +107,8 @@ def test_send_alert_uses_local_adapter(mock_adapter_notify_methods, monkeypatch)
 
 def test_send_alert_uses_cloud_adapter(mock_adapter_notify_methods, monkeypatch):
     mock_local_notify, mock_cloud_notify = mock_adapter_notify_methods
-    monkeypatch.setattr(settings, 'ALERT_PROVIDER', 'cloud')
+    # Patch ALERT_PROVIDER directly in the local_queue_monitor_mod module's namespace
+    monkeypatch.setattr(local_queue_monitor_mod, 'ALERT_PROVIDER', 'cloud')
 
     local_queue_monitor_mod.send_alert("Test Subject Cloud", "Test Content Cloud")
 
